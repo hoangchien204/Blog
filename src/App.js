@@ -1,24 +1,45 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect } from 'react';
+import { useLocation, BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import TabNavigator from './navigators/TabNavigator.tsx';
+import Login from './user/AdminPage.tsx';
+import './assets/css/style.css';
+
+function RouteLogger() {
+  const location = useLocation();
+
+  useEffect(() => {
+    console.log('Current path:', location.pathname);
+  }, [location]);
+
+  return null;
+}
+
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem('admin_token');
+  console.log('ProtectedRoute - Token:', token);
+  if (!token) {
+    console.log('Redirecting to /login');
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+   
+      <Routes>
+        <Route path="/*" element={<TabNavigator />} />
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute>
+              <TabNavigator />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+
   );
 }
 

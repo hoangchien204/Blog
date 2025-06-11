@@ -1,0 +1,20 @@
+::selection {
+  background: rgb(235, 148, 148);
+  color: white; /* bạn có thể tùy chỉnh màu chữ khi bôi đen */
+}
+h1{
+  font-family: Playfair Display, serif;
+  font-size: 40px;
+}
+
+label{
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+p, a, h2,h3{
+    font-family:BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue;
+}
+
+input::placeholder{
+   font-family:BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue;
+}
