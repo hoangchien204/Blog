@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const bodyParser = require('body-parser');
-require('dotenv').config();
+require('dotenv').config({ path: __dirname + '/.env' });
 
 // Tạo app
 const app = express();
@@ -14,7 +14,7 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 // Phục vụ ảnh tĩnh từ thư mục uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname,  'services', 'uploads')));
 
 // Đảm bảo thư mục uploads tồn tại
 const uploadDir = path.join(__dirname, 'uploads');
@@ -83,11 +83,6 @@ app.post('/api/contact', async (req, res) => {
     res.status(500).json({ message: 'Gửi email thất bại!' });
   }
 });
-
-
-
-
-
 
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
