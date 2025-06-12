@@ -20,6 +20,7 @@
     "multer": "^2.0.0",
     "nodemailer": "^7.0.3",
     "path-browserify": "^1.0.1",
+    "pg": "^8.16.0",
     "quill": "^2.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
