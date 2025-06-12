@@ -2,7 +2,7 @@ import React, { useEffect, useState, ChangeEvent } from 'react';
 
 import Footer from '../components/footer.tsx';
 import img from '../assets/img/avartar.jpg';
-
+import API from '../services/API.ts';
 
 const baseURL = 'http://localhost:5000';
 const API_URL = 'http://localhost:5000/api/about';
@@ -33,7 +33,7 @@ const About: React.FC = () => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   useEffect(() => {
-    fetch(API_URL)
+    fetch(API.about)
       .then(res => {
         if (!res.ok) throw new Error('Lỗi khi lấy dữ liệu API');
         return res.json();
@@ -99,7 +99,7 @@ const About: React.FC = () => {
       formData.append('avatar', avatarFile);
     }
 
-    const response = await fetch(API_URL, {
+    const response = await fetch(API.about, {
       method: 'PUT',  
       body: formData,
     });
@@ -380,7 +380,7 @@ const About: React.FC = () => {
             <div className="avatar-container">
               <div className="avatar">
                 <img
-                  src={`${baseURL}${tempProfile.avatar}`}
+                  src={`${API.local}${tempProfile.avatar}`}
                   alt="Avatar"
                   style={{ width: '200px', height: '200px', borderRadius: '50%', objectFit: 'cover' }}
                 />
