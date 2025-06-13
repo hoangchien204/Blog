@@ -24,15 +24,6 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, Date.now() + '_' + file.originalname)
 });
 const upload = multer({ storage });
-const slugify = (text) =>
-  text
-    .toLowerCase()
-    .normalize('NFD')                     // xóa dấu tiếng Việt
-    .replace(/[\u0300-\u036f]/g, '')     // xóa các ký tự dấu
-    .replace(/[^a-z0-9 ]/g, '')          // bỏ ký tự đặc biệt
-    .replace(/\s+/g, '-')                // chuyển khoảng trắng thành dấu -
-    .replace(/-+/g, '-')                 // bỏ trùng dấu -
-    .replace(/^-+|-+$/g, '');            // bỏ dấu - đầu/cuối
 
 // DB Config - Gộp trong file
 const pool = new Pool({
@@ -258,7 +249,16 @@ app.get('/api/blogger/:slug', async (req, res) => {
   }
 });
 
-// Route mới
+const slugify = (text) =>
+  text
+    .toLowerCase()
+    .normalize('NFD')                     // xóa dấu tiếng Việt
+    .replace(/[\u0300-\u036f]/g, '')     // xóa các ký tự dấu
+    .replace(/[^a-z0-9 ]/g, '')          // bỏ ký tự đặc biệt
+    .replace(/\s+/g, '-')               
+    .replace(/-+/g, '-')                
+    .replace(/^-+|-+$/g, '');          
+
 app.get('/api/blogger/:slug', async (req, res) => {
   const { slug } = req.params;
 
@@ -276,6 +276,7 @@ app.get('/api/blogger/:slug', async (req, res) => {
     res.status(500).json({ error: 'Lỗi server' });
   }
 });
+
 app.delete('/api/blogger/:id', async (req, res) => {
   const id = req.params.id;
   const result = await pool.query('SELECT image_path FROM blogger WHERE id = $1', [id]);
