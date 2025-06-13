@@ -268,7 +268,7 @@ app.get('/api/photo-albums/:slug', async (req, res) => {
   try {
     // Lấy danh sách album
     const albumResult = await pool.query(
-      'SELECT id, title, description, location, date FROM photo_albums'
+      'SELECT id, title, description, location, date FROM photos'
     );
 
     const album = albumResult.rows.find((a) => slugify(a.title) === slug);

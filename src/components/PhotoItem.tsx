@@ -25,34 +25,36 @@ interface Album {
 const PhotoItem: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const post = location.state?.post;
- const rawSlug = useParams().slug || '';
-const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
+const { slug = '' } = useParams();
+const cleanSlug = slug.split('?')[0];
+
+  const [post, setPost] = useState<any>(null);
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [album, setAlbum] = useState<Album | null>(null);
 
-  useEffect(() => {
-    if (post?.id) {
-      fetchWithNgrokWarning(API_URL.photo)
-        .then(res => {
-          if (!res.ok) throw new Error('Lỗi khi tải albums');
-          return res.json();
-        })
-        .then((data: { albums: Album[] }) => {
-          const foundAlbum = data.albums.find(a => a.id === post.id);
-          if (foundAlbum) {
-            setAlbum(foundAlbum);
-            setPhotos(foundAlbum.photos || []);
-          } else {
-            console.warn('Không tìm thấy album theo id:', post.id);
-            setAlbum(null);
-            setPhotos([]);
-          }
-        })
-        .catch(err => console.error(err));
-    }
-  }, [post?.id]);
+useEffect(() => {
+  if (location.state?.post) {
+    setPost(location.state.post);
+    setPhotos(location.state.post.photos || []);
+  } else if (cleanSlug) {
+    // fallback khi reload/copy link
+    fetch(`${API_URL.blogger}/${cleanSlug}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Không tìm thấy bài viết');
+        return res.json();
+      })
+      .then((data) => {
+        setPost(data);
+        setPhotos(data.photos || []); // 👈 cần dòng này nếu bạn dùng ảnh
+      })
+      .catch((err) => {
+        console.error('Lỗi khi lấy bài viết:', err);
+        setPost(null); // báo lỗi
+      });
+  }
+}, [cleanSlug, location.state]);
+
 
   if (!post) return <div style={styles.error}>Không tìm thấy bài viết.</div>;
 
@@ -77,7 +79,7 @@ const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
       <p style={styles.date}>{formatDate(album?.date || post.date, album?.location)}</p>
 
       <SocialShare
-        shareUrl={`https://blog-52bs.onrender.com/blogs/${slug}`}
+        shareUrl={`https://blog-52bs.onrender.com/photos/${slug}`}
         shareTitle={post.title}
       />
 

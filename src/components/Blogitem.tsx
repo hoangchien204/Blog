@@ -22,7 +22,7 @@ const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
     if (location.state?.post) {
       setPost(location.state.post);
     } else if (slug) {
-      fetch(`${API_URL.local}/api/blogger/${slug}`)
+      fetch(`${API_URL.blogger}/${slug}`)
         .then((res) => {
           if (!res.ok) throw new Error('Không tìm thấy bài viết');
           return res.json();
