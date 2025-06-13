@@ -1,4 +1,4 @@
-// server.js - Viết lại hoàn toàn dùng PostgreSQL (Render)
+// server.js - Viết lại dùng Cloudinary thay vì lưu ảnh local
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -7,25 +7,32 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const { Pool } = require('pg');
-require('dotenv').config({ path: path.join(__dirname, '.env') })
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Tạo uploads folder
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-app.use('/uploads', express.static(uploadDir));
+// Cloudinary config
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-// Multer config
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, Date.now() + '_' + file.originalname)
+// Multer config with Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'photo_albums',
+    allowed_formats: ['jpg', 'png', 'jpeg'],
+  },
 });
 const upload = multer({ storage });
 
-// DB Config - Gộp trong file
+// DB Config
 const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
@@ -34,12 +41,7 @@ const pool = new Pool({
   port: 5432,
   ssl: { rejectUnauthorized: false }
 });
-console.log('📦 ENV Loaded:', {
-  DB_USER: process.env.DB_USER,
-  DB_PASS: process.env.DB_PASS,
-  DB_SERVER: process.env.DB_SERVER,
-  DB_NAME: process.env.DB_NAME
-});
+
 const hashPassword = (pass) => crypto.createHash('sha256').update(pass).digest('hex');
 
 // Insert admin mặc định
@@ -55,22 +57,16 @@ async function insertDefaultAdmin() {
 
 const serveFrontend = (app) => {
   const buildPath = path.join(__dirname, '../build');
-
-  // Kiểm tra nếu có thư mục build (của React)
   if (!fs.existsSync(buildPath)) {
     console.error('❌ Không tìm thấy thư mục build:', buildPath);
     return;
   }
-
-  // Phục vụ file tĩnh
   app.use(express.static(buildPath));
-
-  // Route catch-all cho SPA
- app.get(/^\/(?!api|uploads).*/, (req, res) => {
-  res.sendFile(path.join(buildPath, 'index.html'));
-});
+  app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
 };
-// Login
+
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ message: 'Username và password bắt buộc' });
@@ -80,7 +76,6 @@ app.post('/api/login', async (req, res) => {
   res.json({ user: { id: user.id, username: user.username, role: user.is_admin ? 'admin' : 'user' }, token: 'fake-token' });
 });
 
-// Gửi email
 app.post('/api/contact', async (req, res) => {
   const { name, email, subject, message } = req.body;
   const transporter = nodemailer.createTransport({
@@ -101,7 +96,6 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-// ABOUT
 app.get('/api/about', async (req, res) => {
   const result = await pool.query('SELECT * FROM about ORDER BY id DESC LIMIT 1');
   res.json(result.rows[0]);
@@ -109,7 +103,7 @@ app.get('/api/about', async (req, res) => {
 
 app.put('/api/about', upload.single('avatar'), async (req, res) => {
   const { id, name, job, intro, quote, description } = req.body;
-  const avatar = req.file ? `/uploads/${req.file.filename}` : null;
+  const avatar = req.file ? req.file.path : null;
   let query = `UPDATE about SET name=$1, job=$2, intro=$3, quote=$4, description=$5`;
   let params = [name, job, intro, quote, description];
   if (avatar) {
@@ -123,7 +117,6 @@ app.put('/api/about', upload.single('avatar'), async (req, res) => {
   res.json({ message: 'Cập nhật thành công', avatarUrl: avatar });
 });
 
-// PROJECTS
 app.get('/api/projects', async (req, res) => {
   const result = await pool.query('SELECT * FROM github_projects ORDER BY id DESC');
   res.json(result.rows);
@@ -145,7 +138,6 @@ app.delete('/api/projects/:id', async (req, res) => {
   res.send('Xóa thành công');
 });
 
-// PHOTO ALBUM
 app.get('/api/photo-albums', async (req, res) => {
   const result = await pool.query(`
     SELECT a.id AS albumId, a.title, a.description, a.location, a.date,
@@ -181,7 +173,7 @@ app.post('/api/upload-photos', upload.array('photos', 10), async (req, res) => {
   );
   const albumId = result.rows[0].id;
   for (const file of req.files) {
-    const src = `/uploads/${file.filename}`;
+    const src = file.path;
     await pool.query('INSERT INTO photos (album_id, src, alt) VALUES ($1, $2, $3)', [albumId, src, file.originalname]);
   }
   res.json({ message: 'Thêm album thành công', albumId });
@@ -194,17 +186,11 @@ app.get('/api/photo-albums/:id/photos', async (req, res) => {
 
 app.delete('/api/photo-albums/:id', async (req, res) => {
   const id = req.params.id;
-  const photos = await pool.query('SELECT src FROM photos WHERE album_id = $1', [id]);
-  photos.rows.forEach(p => {
-    const filePath = path.join(__dirname, p.src);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  });
   await pool.query('DELETE FROM photos WHERE album_id = $1', [id]);
   await pool.query('DELETE FROM photo_albums WHERE id = $1', [id]);
   res.json({ message: 'Album deleted' });
 });
 
-// BLOGGER
 app.get('/api/blogger', async (req, res) => {
   const result = await pool.query('SELECT * FROM blogger ORDER BY date DESC');
   res.json(result.rows);
@@ -212,7 +198,7 @@ app.get('/api/blogger', async (req, res) => {
 
 app.post('/api/blogger', upload.single('image'), async (req, res) => {
   const { title, source, location, description } = req.body;
-  const image_path = req.file ? `/uploads/${req.file.filename}` : null;
+  const image_path = req.file ? req.file.path : null;
   await pool.query(
     'INSERT INTO blogger (title, source, image_path, location, description) VALUES ($1, $2, $3, $4, $5)',
     [title, source, image_path, location, description]
@@ -222,20 +208,11 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
 
 app.delete('/api/blogger/:id', async (req, res) => {
   const id = req.params.id;
-  const result = await pool.query('SELECT image_path FROM blogger WHERE id = $1', [id]);
-  const post = result.rows[0];
-  if (!post) return res.status(404).json({ message: 'Không tìm thấy bài viết' });
-  if (post.image_path) {
-    const filePath = path.join(__dirname, post.image_path);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  }
   await pool.query('DELETE FROM blogger WHERE id = $1', [id]);
   res.json({ message: 'Xóa blogger thành công' });
 });
 
-// Run server
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
   insertDefaultAdmin();

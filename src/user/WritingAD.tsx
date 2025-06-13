@@ -180,13 +180,13 @@ const WritingAD: React.FC = () => {
               </span>
 
               <Link
-                to={`/admin/blogs/${slugify(post.title)}`}
+                to={`/blogs/${slugify(post.title)}`}
                 state={{ post }}
                 style={{ textDecoration: 'none', color: 'inherit' }}
               >
                 <div style={styles.postCard}>
                   <img
-                    src={`http://localhost:5000${post.image_path}`}
+                    src={`${URL_LINK.local}${post.image_path}`}
                     alt={post.title}
                     style={styles.postImage}
                   />
