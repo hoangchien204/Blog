@@ -47,23 +47,26 @@ async function insertDefaultAdmin() {
     console.log('✅ Tài khoản admin đã được thêm');
   }
 }
+const history = require('connect-history-api-fallback');
 
 const serveFrontend = (app) => {
   const buildPath = path.join(__dirname, '../build');
 
-  // Kiểm tra nếu có thư mục build (của React)
   if (!fs.existsSync(buildPath)) {
     console.error('❌ Không tìm thấy thư mục build:', buildPath);
     return;
   }
 
+  // 👉 Bổ sung middleware history trước static
+  app.use(history({
+    // Chỉ fallback nếu request là HTML
+    htmlAcceptHeaders: ['text/html', 'application/xhtml+xml'],
+    // Không ảnh hưởng đến các file tĩnh có dấu chấm như .js, .css
+    disableDotRule: true,
+  }));
+
   // Phục vụ file tĩnh
   app.use(express.static(buildPath));
-
-  // Route catch-all cho SPA
- app.get(/^\/(?!api|uploads).*/, (req, res) => {
-  res.sendFile(path.join(buildPath, 'index.html'));
-});
 };
 // Login
 app.post('/api/login', async (req, res) => {
