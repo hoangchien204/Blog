@@ -49,6 +49,8 @@ const PhotoScreen: React.FC = () => {
     console.error(err);
   }
 };
+
+
 useEffect(() => {
     fetchAlbums();
   }, []);

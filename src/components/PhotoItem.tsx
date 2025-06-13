@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import SocialShare from '../components/SocialShare.tsx';
 import API_URL from '../services/API.ts';
 import { fetchWithNgrokWarning } from '../services/fetchWithNgrok.ts';
@@ -26,6 +26,8 @@ const PhotoItem: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const post = location.state?.post;
+ const rawSlug = useParams().slug || '';
+const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [album, setAlbum] = useState<Album | null>(null);
@@ -74,7 +76,10 @@ const PhotoItem: React.FC = () => {
       <h1 style={styles.title}>{album?.title || post.title}</h1>
       <p style={styles.date}>{formatDate(album?.date || post.date, album?.location)}</p>
 
-      <SocialShare shareUrl={currentUrl} shareTitle={album?.title || post.title} />
+      <SocialShare
+        shareUrl={`https://blog-52bs.onrender.com/blogs/${slug}`}
+        shareTitle={post.title}
+      />
 
       <hr style={{ ...styles.divider, width: '30%' }} />
 

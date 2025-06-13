@@ -262,29 +262,33 @@ app.get('/api/blogger/:slug', async (req, res) => {
   }
 });
 
-app.get('/api/photo-albums/:slug/photos', async (req, res) => {
+app.get('/api/photo-albums/:slug', async (req, res) => {
   const { slug } = req.params;
 
   try {
-    // B1: Tìm album theo slug
-    const albumResult = await pool.query('SELECT id, title FROM photo_albums');
-    const album = albumResult.rows.find(
-      (a) => slugify(a.title) === slug
+    // Lấy danh sách album
+    const albumResult = await pool.query(
+      'SELECT id, title, description, location, date FROM photo_albums'
     );
+
+    const album = albumResult.rows.find((a) => slugify(a.title) === slug);
 
     if (!album) {
       return res.status(404).json({ error: 'Không tìm thấy album' });
     }
 
-    // B2: Lấy ảnh từ album
+    // Lấy ảnh của album
     const photoResult = await pool.query(
       'SELECT id, src, alt FROM photos WHERE album_id = $1',
       [album.id]
     );
 
     res.json({
-      albumId: album.id,
+      id: album.id,
       title: album.title,
+      description: album.description,
+      location: album.location,
+      date: album.date,
       photos: photoResult.rows,
     });
   } catch (err) {
@@ -292,6 +296,7 @@ app.get('/api/photo-albums/:slug/photos', async (req, res) => {
     res.status(500).json({ error: 'Lỗi server' });
   }
 });
+
 
 app.delete('/api/blogger/:id', async (req, res) => {
   const id = req.params.id;
