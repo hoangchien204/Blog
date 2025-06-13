@@ -232,22 +232,6 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
     res.status(500).json({ message: 'Lỗi server khi thêm bài viết' });
   }
 });
-app.get('/api/blogger/:slug', async (req, res) => {
-  const { slug } = req.params;
-
-  try {
-    const result = await pool.query('SELECT * FROM blogger WHERE slug = $1', [slug]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Không tìm thấy bài viết' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Lỗi khi truy vấn slug:', slug, err);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
 
 const slugify = (text) =>
   text
@@ -276,6 +260,7 @@ app.get('/api/blogger/:slug', async (req, res) => {
     res.status(500).json({ error: 'Lỗi server' });
   }
 });
+
 
 app.delete('/api/blogger/:id', async (req, res) => {
   const id = req.params.id;
