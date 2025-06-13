@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { useNavigate } from 'react-router-dom';
+import API from '../services/API';
 
 interface NewPost {
   title: string;
@@ -63,7 +64,7 @@ const AddPostPage = () => {
         formData.append('image', newPost.image);
       }
 
-      const res = await fetch('http://localhost:5000/api/blogger', {
+      const res = await fetch(API.blogger, {
         method: 'POST',
         body: formData,
       });
