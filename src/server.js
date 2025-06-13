@@ -277,7 +277,7 @@ app.get('/api/photo-albums/:slug', async (req, res) => {
 
     // Tìm album khớp với slug
     const albumRows = result.rows.filter(row =>
-      slugify(row.title, { lower: true }) === slug
+      slugify(row.title) === slug
     );
 
     if (albumRows.length === 0) {
