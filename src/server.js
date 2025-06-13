@@ -219,9 +219,10 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
     }
     // Đường dẫn ảnh nếu có
     const image_path = req.file ? `/uploads/${req.file.filename}` : null;
+    const today = new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
     await pool.query(
-      'INSERT INTO blogger (title, source, image_path, location, description) VALUES ($1, $2, $3, $4, $5)',
-      [title, source, image_path, location, description]
+      'INSERT INTO blogger (title, source, image_path, location, description, date) VALUES ($1, $2, $3, $4, $5, $6)',
+      [title, source, image_path, location, description, today]
     );
     res.json({
       message: 'Thêm blogger thành công',
