@@ -7,7 +7,7 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const { Pool } = require('pg');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') })
 
 const app = express();
 app.use(cors());
@@ -34,7 +34,12 @@ const pool = new Pool({
   port: 5432,
   ssl: { rejectUnauthorized: false }
 });
-
+console.log('📦 ENV Loaded:', {
+  DB_USER: process.env.DB_USER,
+  DB_PASS: process.env.DB_PASS,
+  DB_SERVER: process.env.DB_SERVER,
+  DB_NAME: process.env.DB_NAME
+});
 const hashPassword = (pass) => crypto.createHash('sha256').update(pass).digest('hex');
 
 // Insert admin mặc định

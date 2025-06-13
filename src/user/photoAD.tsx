@@ -129,7 +129,7 @@ const handleDeleteAlbum = async (albumId) => {
   if (!window.confirm('Bạn có chắc muốn xóa album này?')) return;
 
   try {
-    const res = await fetch(`http://localhost:5000/api/photo-albums/${albumId}`, {
+    const res = await fetch(`${URL_LINK.photo}/${albumId}`, {
       method: 'DELETE',
     });
 
