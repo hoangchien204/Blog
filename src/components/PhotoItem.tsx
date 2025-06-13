@@ -25,37 +25,42 @@ interface Album {
 const PhotoItem: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-const { slug = '' } = useParams();
-const cleanSlug = slug.split('?')[0];
-
-  const [post, setPost] = useState<any>(null);
+  const post = location.state?.post;
+ const rawSlug = useParams().slug || '';
+const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [album, setAlbum] = useState<Album | null>(null);
 
-useEffect(() => {
-  if (location.state?.post) {
-    setPost(location.state.post);
-    setPhotos(location.state.post.photos || []);
-  } else if (cleanSlug) {
-    // fallback khi reload/copy link
-    fetch(`${API_URL.blogger}/${cleanSlug}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Không tìm thấy bài viết');
-        return res.json();
-      })
-      .then((data) => {
-        setPost(data);
-        setPhotos(data.photos || []); // 👈 cần dòng này nếu bạn dùng ảnh
-      })
-      .catch((err) => {
-        console.error('Lỗi khi lấy bài viết:', err);
-        setPost(null); // báo lỗi
-      });
-  }
-}, [cleanSlug, location.state]);
-
-
+ useEffect(() => {
+    if (post?.id) {
+      fetchWithNgrokWarning(API_URL.photo)
+        .then(res => res.json())
+        .then((data: { albums: Album[] }) => {
+          const found = data.albums.find(a => a.id === post.id);
+          if (found) {
+            setAlbum(found);
+            setPhotos(found.photos || []);
+          }
+        })
+        .catch(console.error);
+    } else if (slug) {
+      fetchWithNgrokWarning(`${API_URL.photo}/${slug}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Không tìm thấy album theo slug');
+          return res.json();
+        })
+        .then((data: Album) => {
+          setAlbum(data);
+          setPhotos(data.photos || []);
+        })
+        .catch(err => {
+          console.error(err);
+          setAlbum(null);
+        });
+    }
+  }, [post?.id, slug]);
+  
   if (!post) return <div style={styles.error}>Không tìm thấy bài viết.</div>;
 
   const formatDate = (dateStr?: string, locationName?: string) => {
