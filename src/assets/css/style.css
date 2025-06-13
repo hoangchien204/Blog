@@ -12,9 +12,13 @@ label{
 }
 
 p, a, h2,h3{
-    font-family:BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue;
+    font-family:Palatino, serif;
 }
 
 input::placeholder{
    font-family:BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue;
+}
+strong {
+      font-family: Palatino, serif;
+          color: #6f6f6f;
 }

@@ -189,7 +189,9 @@ const ProjectsScreen: React.FC = () => {
           user-select: none;
           cursor: default;
         }
-
+          p, a, h2,h3{
+              font-family:BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue;
+          }
         .updated {
           color: #999;
           margin-left: auto; /* đẩy sang phải */

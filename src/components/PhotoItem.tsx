@@ -104,7 +104,7 @@ const PhotoItem: React.FC = () => {
           Ảnh chụp qua lăng kính của tớ
         </p>
         <p style={styles.footerCredit}>
-          <strong style={{ fontWeight: 400 }}>Hoàng Chiến</strong><br />
+          <strong>Hoàng Chiến</strong><br />
           © 2025 Hoàng Chiến. All rights reserved!
         </p>
         <button style={styles.backButton} onClick={() => navigate('/photo')}>
@@ -175,13 +175,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: 'clamp(14px, 3vw, 16px)',
     lineHeight: 1.5,
   },
-  footerCredit: {
-    fontWeight: 300,
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    color: '#333',
-    fontSize: 'clamp(13px, 2.5vw, 14px)',
-    lineHeight: 1.4,
-  },
+
   backButton: {
     fontSize: 'clamp(14px, 3vw, 16px)',
     cursor: 'pointer',

@@ -244,9 +244,9 @@ app.delete('/api/blogger/:id', async (req, res) => {
 
 // Run server
 const PORT = process.env.PORT || 5000;
-
+serveFrontend(app);
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
   insertDefaultAdmin();
-  serveFrontend(app);
+  
 });

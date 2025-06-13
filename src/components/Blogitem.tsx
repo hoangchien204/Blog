@@ -1,7 +1,6 @@
-import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import SocialShare from '../components/SocialShare.tsx';
-import TabNavigator from '../navigators/TabNavigator.tsx';
 import API_URL from '../services/API.ts';
 
 const isDarkMode = document.body.classList.contains('dark-mode');
@@ -14,9 +13,25 @@ const fixImageSizeInDescription = (html: string) => {
 const BlogItem: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const post = location.state?.post;
-  const currentUrl = window.location.href;
-  if (!post) return <div style={styles.error}>Không tìm thấy bài viết.</div>;
+ const rawSlug = useParams().slug || '';
+const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
+
+  const [post, setPost] = useState<any>(null);
+
+  // Ưu tiên lấy từ state, nếu không có thì fetch từ API
+  useEffect(() => {
+    if (location.state?.post) {
+      setPost(location.state.post);
+    } else if (slug) {
+      fetch(`${API_URL.local}/api/blogger/${slug}`)
+        .then((res) => {
+          if (!res.ok) throw new Error('Không tìm thấy bài viết');
+          return res.json();
+        })
+        .then((data) => setPost(data))
+        .catch((err) => console.error('Lỗi lấy bài viết:', err));
+    }
+  }, [slug, location.state]);
 
   const formatDate = (dateStr: string, location: string) => {
     const date = new Date(dateStr);
@@ -26,6 +41,10 @@ const BlogItem: React.FC = () => {
     return `${location}, ngày ${day} tháng ${month} năm ${year}.`;
   };
 
+  if (!post) {
+    return <div style={styles.error}>Không tìm thấy bài viết.</div>;
+  }
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>{post.title}</h1>
@@ -33,12 +52,17 @@ const BlogItem: React.FC = () => {
       <hr style={styles.divider} />
       <p><strong style={{ color: '#6f6f6f' }}>Author:</strong> @chin.hm</p>
       <p><strong style={{ color: '#6f6f6f' }}>Description:</strong> {post.source}</p>
-      <SocialShare shareUrl={currentUrl} shareTitle={post?.title || post.title} />
+      <SocialShare
+        shareUrl={`https://blog-52bs.onrender.com/blogs/${slug}`}
+        shareTitle={post.title}
+      />
+      <hr style={{ ...styles.divider, width: '20%' }} />
       <img
         src={post.image_path ? `${API_URL.local}${post.image_path}` : ''}
         alt={post.title}
         style={styles.image}
       />
+      <hr style={{ ...styles.divider, width: '100%' }} />
       <div
         style={styles.text}
         dangerouslySetInnerHTML={{ __html: fixImageSizeInDescription(post.description) }}
@@ -82,8 +106,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   image: {
     width: '100%',
-    height: 'auto',
-    maxWidth: 680,
+    height: '308px',
     objectFit: 'cover',
     borderRadius: 12,
     display: 'block',

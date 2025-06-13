@@ -229,6 +229,7 @@ const UserScreen: React.FC = () => {
           font-size: 14px;
           line-height: 1.6;
           margin-left: 60px;
+              font-family: Palatino, serif;
         }
 
         /* Mô tả chi tiết */
@@ -243,6 +244,7 @@ const UserScreen: React.FC = () => {
            font-size: '0.8rem';
             color: '#999';
             margin-top: 3px;
+                font-family: Palatino, serif;
         }
       `}</style>
 
