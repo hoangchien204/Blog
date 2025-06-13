@@ -24,6 +24,15 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, Date.now() + '_' + file.originalname)
 });
 const upload = multer({ storage });
+const slugify = (text) =>
+  text
+    .toLowerCase()
+    .normalize('NFD')                     // xóa dấu tiếng Việt
+    .replace(/[\u0300-\u036f]/g, '')     // xóa các ký tự dấu
+    .replace(/[^a-z0-9 ]/g, '')          // bỏ ký tự đặc biệt
+    .replace(/\s+/g, '-')                // chuyển khoảng trắng thành dấu -
+    .replace(/-+/g, '-')                 // bỏ trùng dấu -
+    .replace(/^-+|-+$/g, '');            // bỏ dấu - đầu/cuối
 
 // DB Config - Gộp trong file
 const pool = new Pool({
@@ -234,15 +243,39 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
 });
 app.get('/api/blogger/:slug', async (req, res) => {
   const { slug } = req.params;
-  const result = await pool.query('SELECT * FROM blogger WHERE slug = $1', [slug]);
 
-  if (result.rows.length === 0) {
-    return res.status(404).json({ message: 'Không tìm thấy bài viết' });
+  try {
+    const result = await pool.query('SELECT * FROM blogger WHERE slug = $1', [slug]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Không tìm thấy bài viết' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Lỗi khi truy vấn slug:', slug, err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
-
-  res.json(result.rows[0]);
 });
 
+// Route mới
+app.get('/api/blogger/:slug', async (req, res) => {
+  const { slug } = req.params;
+
+  try {
+    const result = await pool.query('SELECT * FROM blogger');
+    const post = result.rows.find((row) => slugify(row.title) === slug);
+
+    if (!post) {
+      return res.status(404).json({ error: 'Không tìm thấy bài viết' });
+    }
+
+    res.json(post);
+  } catch (err) {
+    console.error('Lỗi khi lọc bài viết theo slug:', err);
+    res.status(500).json({ error: 'Lỗi server' });
+  }
+});
 app.delete('/api/blogger/:id', async (req, res) => {
   const id = req.params.id;
   const result = await pool.query('SELECT image_path FROM blogger WHERE id = $1', [id]);

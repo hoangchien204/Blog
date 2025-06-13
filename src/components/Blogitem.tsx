@@ -18,7 +18,6 @@ const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
 
   const [post, setPost] = useState<any>(null);
 
-  // Ưu tiên lấy từ state, nếu không có thì fetch từ API
   useEffect(() => {
     if (location.state?.post) {
       setPost(location.state.post);
@@ -32,7 +31,9 @@ const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
         .catch((err) => console.error('Lỗi lấy bài viết:', err));
     }
   }, [slug, location.state]);
-
+useEffect(() => {
+  console.log('Slug:', slug); // kiểm tra slug đúng chưa
+}, [slug]);
   const formatDate = (dateStr: string, location: string) => {
     const date = new Date(dateStr);
     const day = date.getDate().toString().padStart(2, '0');
