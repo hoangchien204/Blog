@@ -52,8 +52,9 @@ async function insertDefaultAdmin() {
     console.log('✅ Tài khoản admin đã được thêm');
   }
 }
+
 const serveFrontend = (app) => {
-  const buildPath = path.join(__dirname, '../build'); // tùy vào cấu trúc thư mục
+  const buildPath = path.join(__dirname, '../build');
 
   // Kiểm tra nếu có thư mục build (của React)
   if (!fs.existsSync(buildPath)) {
