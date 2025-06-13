@@ -262,6 +262,50 @@ app.get('/api/blogger/:slug', async (req, res) => {
   }
 });
 
+app.get('/api/photo-albums/:slug', async (req, res) => {
+  const { slug } = req.params;
+
+  try {
+    // Lấy tất cả album và ảnh liên kết
+    const result = await pool.query(`
+      SELECT a.id AS albumId, a.title, a.description, a.location, a.date,
+             p.id AS photoId, p.src, p.alt
+      FROM photo_albums a
+      LEFT JOIN photos p ON a.id = p.album_id
+      ORDER BY p.id DESC
+    `);
+
+    // Tìm album khớp với slug
+    const albumRows = result.rows.filter(row =>
+      slugify(row.title, { lower: true }) === slug
+    );
+
+    if (albumRows.length === 0) {
+      return res.status(404).json({ error: 'Không tìm thấy album ảnh' });
+    }
+
+    const albumInfo = {
+      id: albumRows[0].albumid,
+      title: albumRows[0].title,
+      description: albumRows[0].description,
+      location: albumRows[0].location,
+      date: albumRows[0].date,
+      photos: albumRows
+        .filter(row => row.photoid)
+        .map(row => ({
+          id: row.photoid,
+          src: row.src,
+          alt: row.alt,
+        })),
+    };
+
+    res.json(albumInfo);
+  } catch (err) {
+    console.error('Lỗi khi lọc album theo slug:', err);
+    res.status(500).json({ error: 'Lỗi server' });
+  }
+});
+
 
 app.delete('/api/blogger/:id', async (req, res) => {
   const id = req.params.id;
