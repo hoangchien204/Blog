@@ -207,6 +207,8 @@ app.get('/api/blogger', async (req, res) => {
   const result = await pool.query('SELECT * FROM blogger ORDER BY date DESC');
   res.json(result.rows);
 });
+
+
 app.post('/api/blogger', upload.single('image'), async (req, res) => {
   try {
     const { title, source, location, description } = req.body;
@@ -230,7 +232,16 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
     res.status(500).json({ message: 'Lỗi server khi thêm bài viết' });
   }
 });
+app.get('/api/blogger/:slug', async (req, res) => {
+  const { slug } = req.params;
+  const result = await pool.query('SELECT * FROM blogger WHERE slug = $1', [slug]);
 
+  if (result.rows.length === 0) {
+    return res.status(404).json({ message: 'Không tìm thấy bài viết' });
+  }
+
+  res.json(result.rows[0]);
+});
 
 app.delete('/api/blogger/:id', async (req, res) => {
   const id = req.params.id;
