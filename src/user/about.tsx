@@ -378,7 +378,7 @@ const About: React.FC = () => {
             <div className="avatar-container">
               <div className="avatar">
                 <img
-                  src={`${API.local}${tempProfile.avatar}`}
+                  src={tempProfile.avatar}
                   alt="Avatar"
                   style={{ width: '200px', height: '200px', borderRadius: '50%', objectFit: 'cover' }}
                 />
@@ -423,7 +423,7 @@ const About: React.FC = () => {
             {/* Avatar hiện tại */}
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
               <img
-                src={`${API.local}${tempProfile.avatar}`}
+                src={tempProfile.avatar}
                 alt="Avatar Preview"
                 style={{ width: 100, height: 100, borderRadius: '50%', objectFit: 'cover', marginRight: 15, border: '2px solid #ccc' }}
               />

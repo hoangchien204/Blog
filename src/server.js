@@ -325,14 +325,21 @@ app.get('/api/blogger', async (req, res) => {
   }
 });
 
+
 app.post('/api/blogger', upload.single('image'), async (req, res) => {
   try {
     console.log('POST /api/blogger - Request body:', req.body);
     console.log('POST /api/blogger - Uploaded file:', req.file);
 
     const { title, source, location, description } = req.body;
-    if (!title || !source || !location || !description) {
-      return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
+    if (!title) {
+      return res.status(400).json({ message: 'Thiếu trường bắt buộc: title' });
+    }
+
+    // Log nếu có ký tự tiếng Việt
+    const textFields = [title, source, location, description].join('');
+    if (/[^\x00-\x7F]/.test(textFields)) {
+      console.log('POST /api/blogger - Detected non-ASCII characters (e.g., tiếng Việt)');
     }
 
     const image_path = req.file ? req.file.path : null;
@@ -341,11 +348,18 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
     }
 
     const today = new Date().toISOString().split('T')[0];
-    await pool.query(
-      'INSERT INTO blogger (title, source, image_path, location, description, date) VALUES ($1, $2, $3, $4, $5, $6)',
-      [title, source, image_path, location, description, today]
-    );
-    res.json({ message: 'Thêm blogger thành công', imagePath: image_path });
+    console.log('POST /api/blogger - Insert query params:', [title, source || null, image_path, location || null, description || null, today]);
+
+    try {
+      const result = await pool.query(
+        'INSERT INTO blogger (title, source, image_path, location, description, date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+        [title, source || null, image_path, location || null, description || null, today]
+      );
+      res.json({ message: 'Thêm bài viết thành công', id: result.rows[0].id, imagePath: image_path });
+    } catch (dbError) {
+      console.error('POST /api/blogger - Database error:', dbError.message);
+      throw new Error(`Lỗi database: ${dbError.message}`);
+    }
   } catch (error) {
     console.error('POST /api/blogger - Error:', error.message);
     res.status(500).json({ message: 'Lỗi server khi thêm bài viết', error: error.message });
