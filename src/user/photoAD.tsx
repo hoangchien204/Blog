@@ -49,7 +49,7 @@ const [newTitle, setNewTitle] = useState('');
 
     const albums: PhotoAlbum[] = data.albums.map((album: any) => ({
       id: album.id,
-      photos: album.photos ? album.photos.map((p: any) => `${URL_LINK.local}${p.src}`) : [],
+      photos: album.photos ? album.photos.map((p: any) => p.src) : [],
       description: album.description,
       location: album.location,
       date: new Date(album.date).toLocaleDateString('vi-VN'),

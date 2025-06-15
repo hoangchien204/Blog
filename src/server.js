@@ -73,32 +73,41 @@ async function insertDefaultAbout() {
 
 // LOGIN
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ message: 'Username và password bắt buộc' });
-  const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-  const user = result.rows[0];
-  if (!user || user.password !== hashPassword(password)) return res.status(401).json({ message: 'Sai tên đăng nhập hoặc mật khẩu' });
-  res.json({ user: { id: user.id, username: user.username, role: user.is_admin ? 'admin' : 'user' }, token: 'fake-token' });
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ message: 'Username và password bắt buộc' });
+    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    const user = result.rows[0];
+    if (!user || user.password !== hashPassword(password)) return res.status(401).json({ message: 'Sai tên đăng nhập hoặc mật khẩu' });
+    res.json({ user: { id: user.id, username: user.username, role: user.is_admin ? 'admin' : 'user' }, token: 'fake-token' });
+  } catch (error) {
+    console.error('Login error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi đăng nhập', error: error.message });
+  }
 });
 
 // GỬI EMAIL
 app.post('/api/contact', async (req, res) => {
-  const { name, email, subject, message } = req.body;
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-  });
-  const mailOptions = {
-    from: email,
-    to: process.env.EMAIL_USER,
-    subject: `[Liên hệ] ${subject}`,
-    text: `Họ tên: ${name}\nEmail: ${email}\n\nNội dung:\n${message}`
-  };
   try {
+    const { name, email, subject, message } = req.body;
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ message: 'Thiếu các trường bắt buộc' });
+    }
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    });
+    const mailOptions = {
+      from: email,
+      to: process.env.EMAIL_USER,
+      subject: `[Liên hệ] ${subject}`,
+      text: `Họ tên: ${name}\nEmail: ${email}\n\nNội dung:\n${message}`
+    };
     await transporter.sendMail(mailOptions);
     res.json({ message: 'Gửi email thành công' });
-  } catch (err) {
-    res.status(500).json({ message: 'Gửi email thất bại' });
+  } catch (error) {
+    console.error('Contact error:', error.message);
+    res.status(500).json({ message: 'Gửi email thất bại', error: error.message });
   }
 });
 
@@ -120,8 +129,8 @@ app.get('/api/about', async (req, res) => {
 
 app.put('/api/about', upload.single('avatar'), async (req, res) => {
   try {
-    console.log('Request body:', req.body);
-    console.log('Uploaded file:', req.file);
+    console.log('PUT /api/about - Request body:', req.body);
+    console.log('PUT /api/about - Uploaded file:', req.file);
 
     const { id, name, job, intro, quote, description } = req.body;
     if (!id || !name || !job) {
@@ -129,8 +138,8 @@ app.put('/api/about', upload.single('avatar'), async (req, res) => {
     }
 
     const avatar = req.file ? req.file.path : null;
-    if (avatar && avatar.length > 255) {
-      return res.status(400).json({ message: 'URL ảnh quá dài' });
+    if (avatar && avatar.length > 500) {
+      return res.status(400).json({ message: 'URL ảnh quá dài (>500 ký tự)' });
     }
 
     const checkResult = await pool.query('SELECT 1 FROM about WHERE id = $1', [id]);
@@ -149,71 +158,94 @@ app.put('/api/about', upload.single('avatar'), async (req, res) => {
       params.push(id);
     }
 
-    console.log('Query:', query);
-    console.log('Params:', params);
+    console.log('PUT /api/about - Query:', query);
+    console.log('PUT /api/about - Params:', params);
 
     await pool.query(query, params);
     res.json({ message: 'Cập nhật thành công', avatarUrl: avatar });
   } catch (error) {
-    console.error('Update about error:', error.message);
+    console.error('PUT /api/about - Error:', error.message);
     res.status(500).json({ message: 'Lỗi server khi cập nhật about', error: error.message });
   }
 });
 
 // PROJECTS
 app.get('/api/projects', async (req, res) => {
-  const result = await pool.query('SELECT * FROM github_projects ORDER BY id DESC');
-  res.json(result.rows);
+  try {
+    const result = await pool.query('SELECT * FROM github_projects ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get projects error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu projects', error: error.message });
+  }
 });
 
 app.post('/api/projects', async (req, res) => {
-  const { name, owner, githubLink, title, description } = req.body;
-  const result = await pool.query(
-    'INSERT INTO github_projects (name, owner, github_link, title, description) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-    [name, owner, githubLink, title, description]
-  );
-  res.status(201).json({ message: 'Thêm dự án thành công', id: result.rows[0].id });
+  try {
+    const { name, owner, githubLink, title, description } = req.body;
+    if (!name || !owner || !githubLink || !title) {
+      return res.status(400).json({ message: 'Thiếu các trường bắt buộc' });
+    }
+    const result = await pool.query(
+      'INSERT INTO github_projects (name, owner, github_link, title, description) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [name, owner, githubLink, title, description]
+    );
+    res.status(201).json({ message: 'Thêm dự án thành công', id: result.rows[0].id });
+  } catch (error) {
+    console.error('Post projects error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi thêm dự án', error: error.message });
+  }
 });
 
 app.delete('/api/projects/:id', async (req, res) => {
-  const id = req.params.id;
-  const result = await pool.query('DELETE FROM github_projects WHERE id = $1', [id]);
-  if (result.rowCount === 0) return res.status(404).send('Không tìm thấy dự án');
-  res.send('Xóa thành công');
+  try {
+    const id = req.params.id;
+    const result = await pool.query('DELETE FROM github_projects WHERE id = $1', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ message: 'Không tìm thấy dự án' });
+    res.json({ message: 'Xóa thành công' });
+  } catch (error) {
+    console.error('Delete projects error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi xóa dự án', error: error.message });
+  }
 });
 
 // PHOTO ALBUM
 app.get('/api/photo-albums', async (req, res) => {
-  const result = await pool.query(`
-    SELECT a.id AS albumId, a.title, a.description, a.location, a.date,
-           p.id AS photoId, p.src, p.alt
-    FROM photo_albums a
-    LEFT JOIN photos p ON a.id = p.album_id
-    ORDER BY a.date, p.id DESC
-  `);
-  const albumsMap = new Map();
-  for (const row of result.rows) {
-    if (!albumsMap.has(row.albumid)) {
-      albumsMap.set(row.albumid, {
-        id: row.albumid,
-        title: row.title,
-        description: row.description,
-        location: row.location,
-        date: row.date,
-        photos: []
-      });
+  try {
+    const result = await pool.query(`
+      SELECT a.id AS albumId, a.title, a.description, a.location, a.date,
+             p.id AS photoId, p.src, p.alt
+      FROM photo_albums a
+      LEFT JOIN photos p ON a.id = p.album_id
+      ORDER BY a.date, p.id DESC
+    `);
+    const albumsMap = new Map();
+    for (const row of result.rows) {
+      if (!albumsMap.has(row.albumid)) {
+        albumsMap.set(row.albumid, {
+          id: row.albumid,
+          title: row.title,
+          description: row.description,
+          location: row.location,
+          date: row.date,
+          photos: []
+        });
+      }
+      if (row.photoid) {
+        albumsMap.get(row.albumid).photos.push({ id: row.photoid, src: row.src, alt: row.alt });
+      }
     }
-    if (row.photoid) {
-      albumsMap.get(row.albumid).photos.push({ id: row.photoid, src: row.src, alt: row.alt });
-    }
+    res.json({ albums: Array.from(albumsMap.values()) });
+  } catch (error) {
+    console.error('Get photo-albums error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu photo-albums', error: error.message });
   }
-  res.json({ albums: Array.from(albumsMap.values()) });
 });
 
 app.post('/api/upload-photos', upload.array('photos', 10), async (req, res) => {
   try {
-    console.log('Request body:', req.body);
-    console.log('Uploaded files:', req.files);
+    console.log('POST /api/upload-photos - Request body:', req.body);
+    console.log('POST /api/upload-photos - Uploaded files:', req.files);
 
     const { title, description, location, date } = req.body;
     if (!title || !description || !location || !date) {
@@ -231,10 +263,10 @@ app.post('/api/upload-photos', upload.array('photos', 10), async (req, res) => {
     const albumId = result.rows[0].id;
 
     for (const file of req.files) {
-      if (file.path.length > 255) {
-        return res.status(400).json({ message: 'URL ảnh quá dài' });
+      if (file.path.length > 500) {
+        return res.status(400).json({ message: 'URL ảnh quá dài (>500 ký tự)' });
       }
-      console.log('Inserting photo:', file.path);
+      console.log('POST /api/upload-photos - Inserting photo:', file.path);
       await pool.query('INSERT INTO photos (album_id, src, alt) VALUES ($1, $2, $3)', [
         albumId,
         file.path,
@@ -244,36 +276,59 @@ app.post('/api/upload-photos', upload.array('photos', 10), async (req, res) => {
 
     res.json({ message: 'Thêm album thành công', albumId });
   } catch (error) {
-    console.error('Upload photos error:', error.message);
+    console.error('POST /api/upload-photos - Error:', error.message);
     res.status(500).json({ message: 'Lỗi server khi upload ảnh', error: error.message });
   }
 });
 
 app.get('/api/photo-albums/:id/photos', async (req, res) => {
-  const result = await pool.query('SELECT id, src, alt FROM photos WHERE album_id = $1', [req.params.id]);
-  res.json(result.rows);
+  try {
+    const result = await pool.query('SELECT id, src, alt FROM photos WHERE album_id = $1', [req.params.id]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get photo-albums/:id/photos error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi lấy ảnh', error: error.message });
+  }
 });
 
 app.delete('/api/photo-albums/:id', async (req, res) => {
-  const id = req.params.id;
-  await pool.query('DELETE FROM photos WHERE album_id = $1', [id]);
-  await pool.query('DELETE FROM photo_albums WHERE id = $1', [id]);
-  res.json({ message: 'Album deleted' });
+  try {
+    const id = req.params.id;
+    await pool.query('DELETE FROM photos WHERE album_id = $1', [id]);
+    await pool.query('DELETE FROM photo_albums WHERE id = $1', [id]);
+    res.json({ message: 'Xóa album thành công' });
+  } catch (error) {
+    console.error('Delete photo-albums/:id error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi xóa album', error: error.message });
+  }
 });
 
 // BLOGGER
 const slugify = (text) =>
-  text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+  text
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
 app.get('/api/blogger', async (req, res) => {
-  const result = await pool.query('SELECT * FROM blogger ORDER BY date DESC');
-  res.json(result.rows);
+  try {
+    const result = await pool.query('SELECT * FROM blogger ORDER BY date DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get blogger error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu blogger', error: error.message });
+  }
 });
 
 app.post('/api/blogger', upload.single('image'), async (req, res) => {
   try {
-    console.log('Request body:', req.body);
-    console.log('Uploaded file:', req.file);
+    console.log('POST /api/blogger - Request body:', req.body);
+    console.log('POST /api/blogger - Uploaded file:', req.file);
 
     const { title, source, location, description } = req.body;
     if (!title || !source || !location || !description) {
@@ -281,8 +336,8 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
     }
 
     const image_path = req.file ? req.file.path : null;
-    if (image_path && image_path.length > 255) {
-      return res.status(400).json({ message: 'URL ảnh quá dài' });
+    if (image_path && image_path.length > 500) {
+      return res.status(400).json({ message: 'URL ảnh quá dài (>500 ký tự)' });
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -292,42 +347,62 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
     );
     res.json({ message: 'Thêm blogger thành công', imagePath: image_path });
   } catch (error) {
-    console.error('Blogger error:', error.message);
+    console.error('POST /api/blogger - Error:', error.message);
     res.status(500).json({ message: 'Lỗi server khi thêm bài viết', error: error.message });
   }
 });
 
 app.get('/api/blogger/:slug', async (req, res) => {
-  const { slug } = req.params;
   try {
+    const { slug } = req.params;
     const result = await pool.query('SELECT * FROM blogger');
     const post = result.rows.find((row) => slugify(row.title) === slug);
-    if (!post) return res.status(404).json({ error: 'Không tìm thấy bài viết' });
+    if (!post) return res.status(404).json({ message: 'Không tìm thấy bài viết' });
     res.json(post);
-  } catch (err) {
-    console.error('Lỗi khi lọc bài viết theo slug:', err);
-    res.status(500).json({ error: 'Lỗi server' });
+  } catch (error) {
+    console.error('Get blogger/:slug error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi lấy bài viết', error: error.message });
   }
 });
 
 app.get('/api/photo-albums/:slug', async (req, res) => {
-  const { slug } = req.params;
   try {
+    const { slug } = req.params;
     const albumResult = await pool.query('SELECT id, title, description, location, date FROM photo_albums');
     const album = albumResult.rows.find((a) => slugify(a.title) === slug);
-    if (!album) return res.status(404).json({ error: 'Không tìm thấy album' });
+    if (!album) return res.status(404).json({ message: 'Không tìm thấy album' });
     const photoResult = await pool.query('SELECT id, src, alt FROM photos WHERE album_id = $1', [album.id]);
     res.json({ ...album, photos: photoResult.rows });
-  } catch (err) {
-    console.error('Lỗi lấy ảnh theo slug:', err);
-    res.status(500).json({ error: 'Lỗi server' });
+  } catch (error) {
+    console.error('Get photo-albums/:slug error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi lấy album', error: error.message });
   }
 });
 
 app.delete('/api/blogger/:id', async (req, res) => {
-  const id = req.params.id;
-  await pool.query('DELETE FROM blogger WHERE id = $1', [id]);
-  res.json({ message: 'Xóa blogger thành công' });
+  try {
+    const id = req.params.id;
+    await pool.query('DELETE FROM blogger WHERE id = $1', [id]);
+    res.json({ message: 'Xóa blogger thành công' });
+  } catch (error) {
+    console.error('Delete blogger/:id error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi xóa bài viết', error: error.message });
+  }
+});
+
+// Debug endpoint for upload testing
+app.post('/debug-upload', upload.single('avatar'), async (req, res) => {
+  try {
+    console.log('POST /debug-upload - Request body:', req.body);
+    console.log('POST /debug-upload - Uploaded file:', req.file);
+    if (!req.file) {
+      return res.status(400).json({ message: 'Không có file được upload' });
+    }
+    res.json({ message: 'Upload thành công', url: req.file.path });
+  } catch (error) {
+    console.error('POST /debug-upload - Error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi upload', error: error.message });
+  }
 });
 
 // Serve frontend (nếu có)
@@ -341,6 +416,5 @@ if (require('fs').existsSync(buildPath)) {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
-  insertDefaultAdmin();
-  insertDefaultAbout();
+  
 });

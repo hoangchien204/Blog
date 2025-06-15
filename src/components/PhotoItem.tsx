@@ -101,7 +101,7 @@ const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
           {photos.map(photo => (
             <img
               key={photo.id}
-              src={`${API_URL.local}${photo.src}`}
+              src={photo.src}
               alt={photo.alt}
               style={styles.photoLarge}
             />

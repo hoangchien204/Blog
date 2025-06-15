@@ -41,7 +41,9 @@ useEffect(() => {
     const year = date.getFullYear();
     return `${location}, ngày ${day} tháng ${month} năm ${year}.`;
   };
-
+useEffect(() => {
+  console.log('post.image_path:', post?.image_path); // kiểm tra URL ảnh
+}, [post]);
   if (!post) {
     return <div style={styles.error}>Không tìm thấy bài viết.</div>;
   }
@@ -59,7 +61,7 @@ useEffect(() => {
       />
       <hr style={{ ...styles.divider, width: '20%' }} />
       <img
-        src={post.image_path ? `${API_URL.local}${post.image_path}` : ''}
+        src={post.image_path || ''}
         alt={post.title}
         style={styles.image}
       />

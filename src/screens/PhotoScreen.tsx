@@ -38,12 +38,11 @@ const PhotoScreen: React.FC = () => {
     const albumsData: PhotoAlbum[] = data.albums.map((album: any) => ({
       id: album.id,
       title: album.title,
-      photos: album.photos.map((p: any) => `${URL_LINK.local}${p.src}`),
+      photos: album.photos.map((p: any) => p.src),
       description: album.description,
       location: album.location,
       date: new Date(album.date).toLocaleDateString('vi-VN'),
     }));
-
     setAlbums(albumsData);
   } catch (err) {
     console.error(err);
