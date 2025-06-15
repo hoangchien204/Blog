@@ -324,44 +324,41 @@ app.get('/api/blogger', async (req, res) => {
     res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu blogger', error: error.message });
   }
 });
-
 app.post('/api/blogger', upload.single('image'), async (req, res) => {
   try {
-    console.log('POST /api/blogger - Request body:', req.body);
-    console.log('POST /api/blogger - Uploaded file:', req.file);
-
     const { title, source, location, description } = req.body;
-    if (!title) {
-      return res.status(400).json({ message: 'Thiếu trường bắt buộc: title' });
-    }
-
-    // Log ký tự tiếng Việt
-    const textFields = [title, source, location, description].join('');
-    if (/[^\x00-\x7F]/.test(textFields)) {
-      console.log('POST /api/blogger - Detected non-ASCII characters (e.g., tiếng Việt)');
-    }
+    if (!title) return res.status(400).json({ message: 'Thiếu tiêu đề' });
 
     const image_path = req.file ? req.file.path : null;
+
     if (image_path && image_path.length > 500) {
-      return res.status(400).json({ message: 'URL ảnh quá dài (>500 ký tự)' });
+      return res.status(400).json({ message: 'URL ảnh quá dài' });
     }
 
     const today = new Date().toISOString().split('T')[0];
-    console.log('POST /api/blogger - Insert query params:', [title, source || null, image_path, location || null, description || null, today]);
 
-    try {
-      const result = await pool.query(
-        'INSERT INTO blogger (title, source, image_path, location, description, date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-        [title, source || null, image_path, location || null, description || null, today]
-      );
-      res.json({ message: 'Thêm bài viết thành công', id: result.rows[0].id, imagePath: image_path });
-    } catch (dbError) {
-      console.error('POST /api/blogger - Database error:', dbError.message);
-      throw new Error(`Lỗi database: ${dbError.message}`);
-    }
-  } catch (error) {
-    console.error('POST /api/blogger - Error:', error.message);
-    res.status(500).json({ message: 'Lỗi server khi thêm bài viết', error: error.message });
+    const result = await pool.query(
+      `INSERT INTO blogger (title, source, image_path, location, description, date)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [
+        title,
+        source || null,
+        image_path,
+        location || null,
+        description || null,
+        today,
+      ]
+    );
+
+    res.json({
+      message: 'Thêm bài viết thành công',
+      id: result.rows[0].id,
+      imageUrl: image_path,
+    });
+
+  } catch (err) {
+    console.error('POST /api/blogger - Lỗi server:', err);
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 });
 
@@ -403,20 +400,7 @@ app.delete('/api/blogger/:id', async (req, res) => {
   }
 });
 
-// Debug endpoint for upload testing
-app.post('/debug-upload', upload.single('avatar'), async (req, res) => {
-  try {
-    console.log('POST /debug-upload - Request body:', req.body);
-    console.log('POST /debug-upload - Uploaded file:', req.file);
-    if (!req.file) {
-      return res.status(400).json({ message: 'Không có file được upload' });
-    }
-    res.json({ message: 'Upload thành công', url: req.file.path });
-  } catch (error) {
-    console.error('POST /debug-upload - Error:', error.message);
-    res.status(500).json({ message: 'Lỗi server khi upload', error: error.message });
-  }
-});
+
 
 // Serve frontend (nếu có)
 const history = require('connect-history-api-fallback');

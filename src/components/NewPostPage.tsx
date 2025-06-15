@@ -46,7 +46,7 @@ const AddPostPage = () => {
     }));
   };
 
- const handleAddPost = async () => {
+const handleAddPost = async () => {
   try {
     if (!newPost.title) {
       alert('Vui lòng nhập tiêu đề bài viết!');
@@ -59,28 +59,27 @@ const AddPostPage = () => {
 
     const formData = new FormData();
     formData.append('title', newPost.title);
-    formData.append('source', newPost.source);
-    formData.append('location', newPost.location);
-    formData.append('description', newPost.description);
-    // Bỏ youtubeUrl nếu không cần
-    // formData.append('youtubeUrl', newPost.youtubeUrl);
-
+    formData.append('source', newPost.source || '');
+    formData.append('location', newPost.location || '');
+    formData.append('description', newPost.description || '');
     formData.append('image', newPost.image);
 
-    console.log('POST /api/blogger - FormData:', {
-      title: newPost.title,
-      source: newPost.source,
-      location: newPost.location,
-      description: newPost.description,
-      image: newPost.image.name,
-    });
-
+    console.log('API.blogger:', API.blogger);
     const res = await fetch(API.blogger, {
       method: 'POST',
       body: formData,
     });
+console.log('API.blogger:', API.blogger);
+    // ✅ Check status trước khi parse JSON
+    let data;
+    try {
+      data = await res.json();
+    } catch (jsonErr) {
+      const errorText = await res.text(); // fallback nếu server trả về HTML
+      console.error('POST /api/blogger - Invalid JSON. Raw response:', errorText);
+      throw new Error('Phản hồi từ server không hợp lệ (không phải JSON)');
+    }
 
-    const data = await res.json();
     if (res.ok) {
       alert('Thêm bài viết thành công');
       setNewPost({
@@ -94,15 +93,14 @@ const AddPostPage = () => {
       });
       navigate('/admin/writing');
     } else {
-      console.error('POST /api/blogger - Error:', data);
+      console.error('POST /api/blogger - Error response:', data);
       alert(`Thêm bài viết thất bại: ${data.message || 'Lỗi không xác định'}`);
     }
   } catch (error) {
-    console.error('POST /api/blogger - Client error:', error.message);
+    console.error('POST /api/blogger - Client error:', error);
     alert(`Lỗi khi thêm bài viết: ${error.message}`);
   }
 };
-
   return (
     <>
       <div style={styles.container}>

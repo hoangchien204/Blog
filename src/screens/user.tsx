@@ -56,7 +56,7 @@ const UserScreen: React.FC = () => {
           <div className="avatar-container">
             <div className="avatar">
               <img
-                src={`${API.local}${about.avatar}`} // Ghép base URL + đường dẫn avatar trong DB
+                src={about.avatar}
                 alt="Avatar"
                 style={{ width: '200px', height: '200px', borderRadius: '50%', objectFit: 'cover' }}
               />
