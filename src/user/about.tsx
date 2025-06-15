@@ -4,8 +4,6 @@ import Footer from '../components/footer.tsx';
 import img from '../assets/img/avartar.jpg';
 import API from '../services/API.ts';
 
-const baseURL = 'http://localhost:5000';
-const API_URL = 'http://localhost:5000/api/about';
 type ProfileType = {
   name: string;
   job: string;
@@ -425,7 +423,7 @@ const About: React.FC = () => {
             {/* Avatar hiện tại */}
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
               <img
-                src={`${baseURL}${tempProfile.avatar}`}
+                src={`${API.local}${tempProfile.avatar}`}
                 alt="Avatar Preview"
                 style={{ width: 100, height: 100, borderRadius: '50%', objectFit: 'cover', marginRight: 15, border: '2px solid #ccc' }}
               />

@@ -14,6 +14,11 @@ app.use(cors());
 app.use(express.json());
 
 // Cloudinary config
+console.log('Cloudinary config:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET ? '[REDACTED]' : undefined,
+});
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -24,10 +29,14 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: 'render_uploads',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    public_id: (req, file) => 'avatar_' + Date.now(),
   },
 });
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
 // PostgreSQL config
 const pool = new Pool({
@@ -48,6 +57,17 @@ async function insertDefaultAdmin() {
   if (result.rows.length === 0) {
     await pool.query('INSERT INTO users (username, password, is_admin) VALUES ($1, $2, $3)', [username, password, true]);
     console.log('✅ Tài khoản admin đã được thêm');
+  }
+}
+
+async function insertDefaultAbout() {
+  const result = await pool.query('SELECT COUNT(*) FROM about');
+  if (parseInt(result.rows[0].count) === 0) {
+    await pool.query(
+      'INSERT INTO about (name, job, intro, quote, description, avatar) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      ['Default Name', 'Default Job', 'Default Intro', 'Default Quote', 'Default Description', 'https://via.placeholder.com/150']
+    );
+    console.log('✅ Bản ghi about mặc định đã được thêm');
   }
 }
 
@@ -84,24 +104,60 @@ app.post('/api/contact', async (req, res) => {
 
 // ABOUT
 app.get('/api/about', async (req, res) => {
-  const result = await pool.query('SELECT * FROM about ORDER BY id DESC LIMIT 1');
-  res.json(result.rows[0]);
+  try {
+    const result = await pool.query('SELECT * FROM about ORDER BY id DESC LIMIT 1');
+    if (result.rows.length === 0) {
+      await insertDefaultAbout();
+      const newResult = await pool.query('SELECT * FROM about ORDER BY id DESC LIMIT 1');
+      return res.json(newResult.rows[0]);
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Get about error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu about', error: error.message });
+  }
 });
 
 app.put('/api/about', upload.single('avatar'), async (req, res) => {
-  const { id, name, job, intro, quote, description } = req.body;
-  const avatar = req.file ? req.file.path : null;
-  let query = `UPDATE about SET name=$1, job=$2, intro=$3, quote=$4, description=$5`;
-  let params = [name, job, intro, quote, description];
-  if (avatar) {
-    query += `, avatar=$6 WHERE id=$7`;
-    params.push(avatar, id);
-  } else {
-    query += ` WHERE id=$6`;
-    params.push(id);
+  try {
+    console.log('Request body:', req.body);
+    console.log('Uploaded file:', req.file);
+
+    const { id, name, job, intro, quote, description } = req.body;
+    if (!id || !name || !job) {
+      return res.status(400).json({ message: 'Thiếu các trường bắt buộc: id, name, job' });
+    }
+
+    const avatar = req.file ? req.file.path : null;
+    if (avatar && avatar.length > 255) {
+      return res.status(400).json({ message: 'URL ảnh quá dài' });
+    }
+
+    const checkResult = await pool.query('SELECT 1 FROM about WHERE id = $1', [id]);
+    if (checkResult.rowCount === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy bản ghi với id này' });
+    }
+
+    let query = `UPDATE about SET name=$1, job=$2, intro=$3, quote=$4, description=$5`;
+    let params = [name, job, intro || null, quote || null, description || null];
+
+    if (avatar) {
+      query += `, avatar=$6 WHERE id=$7`;
+      params.push(avatar, id);
+    } else {
+      query += ` WHERE id=$6`;
+      params.push(id);
+    }
+
+    console.log('Query:', query);
+    console.log('Params:', params);
+
+    await pool.query(query, params);
+    res.json({ message: 'Cập nhật thành công', avatarUrl: avatar });
+  } catch (error) {
+    console.error('Update about error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi cập nhật about', error: error.message });
   }
-  await pool.query(query, params);
-  res.json({ message: 'Cập nhật thành công', avatarUrl: avatar });
 });
 
 // PROJECTS
@@ -155,17 +211,42 @@ app.get('/api/photo-albums', async (req, res) => {
 });
 
 app.post('/api/upload-photos', upload.array('photos', 10), async (req, res) => {
-  const { title, description, location, date } = req.body;
-  const result = await pool.query(
-    'INSERT INTO photo_albums (title, description, location, date) VALUES ($1, $2, $3, $4) RETURNING id',
-    [title, description, location, date]
-  );
-  const albumId = result.rows[0].id;
-  for (const file of req.files) {
-    const src = file.path;
-    await pool.query('INSERT INTO photos (album_id, src, alt) VALUES ($1, $2, $3)', [albumId, src, file.originalname]);
+  try {
+    console.log('Request body:', req.body);
+    console.log('Uploaded files:', req.files);
+
+    const { title, description, location, date } = req.body;
+    if (!title || !description || !location || !date) {
+      return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'Không có ảnh được upload' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO photo_albums (title, description, location, date) VALUES ($1, $2, $3, $4) RETURNING id',
+      [title, description, location, date]
+    );
+    const albumId = result.rows[0].id;
+
+    for (const file of req.files) {
+      if (file.path.length > 255) {
+        return res.status(400).json({ message: 'URL ảnh quá dài' });
+      }
+      console.log('Inserting photo:', file.path);
+      await pool.query('INSERT INTO photos (album_id, src, alt) VALUES ($1, $2, $3)', [
+        albumId,
+        file.path,
+        file.originalname,
+      ]);
+    }
+
+    res.json({ message: 'Thêm album thành công', albumId });
+  } catch (error) {
+    console.error('Upload photos error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi upload ảnh', error: error.message });
   }
-  res.json({ message: 'Thêm album thành công', albumId });
 });
 
 app.get('/api/photo-albums/:id/photos', async (req, res) => {
@@ -191,11 +272,19 @@ app.get('/api/blogger', async (req, res) => {
 
 app.post('/api/blogger', upload.single('image'), async (req, res) => {
   try {
+    console.log('Request body:', req.body);
+    console.log('Uploaded file:', req.file);
+
     const { title, source, location, description } = req.body;
     if (!title || !source || !location || !description) {
       return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
     }
+
     const image_path = req.file ? req.file.path : null;
+    if (image_path && image_path.length > 255) {
+      return res.status(400).json({ message: 'URL ảnh quá dài' });
+    }
+
     const today = new Date().toISOString().split('T')[0];
     await pool.query(
       'INSERT INTO blogger (title, source, image_path, location, description, date) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -203,8 +292,8 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
     );
     res.json({ message: 'Thêm blogger thành công', imagePath: image_path });
   } catch (error) {
-    console.error('Lỗi thêm blogger:', error.message);
-    res.status(500).json({ message: 'Lỗi server khi thêm bài viết' });
+    console.error('Blogger error:', error.message);
+    res.status(500).json({ message: 'Lỗi server khi thêm bài viết', error: error.message });
   }
 });
 
@@ -253,4 +342,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
   insertDefaultAdmin();
+  insertDefaultAbout();
 });
