@@ -46,49 +46,62 @@ const AddPostPage = () => {
     }));
   };
 
-  const handleAddPost = async () => {
-    try {
-         if (!newPost.image) {
-        alert('Vui lòng thêm ảnh minh họa trước khi đăng bài!');
-        return; // dừng hàm nếu chưa có ảnh
-        }
-
-      const formData = new FormData();
-      formData.append('title', newPost.title);
-      formData.append('source', newPost.source);
-      formData.append('location', newPost.location);
-      formData.append('description', newPost.description);
-      formData.append('youtubeUrl', newPost.youtubeUrl);
-
-      if (newPost.image) {
-        formData.append('image', newPost.image);
-      }
-
-      const res = await fetch(API.blogger, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (res.ok) {
-        alert('Thêm bài viết thành công');
-        setNewPost({
-          title: '',
-          source: '',
-          location: '',
-          description: '',
-          image: null,
-          previewImage: '',
-          youtubeUrl: '',
-        });
-        navigate('/admin/writing');
-      } else {
-        alert('Thêm bài viết thất bại!');
-      }
-    } catch (error) {
-      console.error('Lỗi khi thêm bài viết:', error);
-      alert('Lỗi khi thêm bài viết');
+ const handleAddPost = async () => {
+  try {
+    if (!newPost.title) {
+      alert('Vui lòng nhập tiêu đề bài viết!');
+      return;
     }
-  };
+    if (!newPost.image) {
+      alert('Vui lòng thêm ảnh minh họa trước khi đăng bài!');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('title', newPost.title);
+    formData.append('source', newPost.source);
+    formData.append('location', newPost.location);
+    formData.append('description', newPost.description);
+    // Bỏ youtubeUrl nếu không cần
+    // formData.append('youtubeUrl', newPost.youtubeUrl);
+
+    formData.append('image', newPost.image);
+
+    console.log('POST /api/blogger - FormData:', {
+      title: newPost.title,
+      source: newPost.source,
+      location: newPost.location,
+      description: newPost.description,
+      image: newPost.image.name,
+    });
+
+    const res = await fetch(API.blogger, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      alert('Thêm bài viết thành công');
+      setNewPost({
+        title: '',
+        source: '',
+        location: '',
+        description: '',
+        image: null,
+        previewImage: '',
+        youtubeUrl: '',
+      });
+      navigate('/admin/writing');
+    } else {
+      console.error('POST /api/blogger - Error:', data);
+      alert(`Thêm bài viết thất bại: ${data.message || 'Lỗi không xác định'}`);
+    }
+  } catch (error) {
+    console.error('POST /api/blogger - Client error:', error.message);
+    alert(`Lỗi khi thêm bài viết: ${error.message}`);
+  }
+};
 
   return (
     <>

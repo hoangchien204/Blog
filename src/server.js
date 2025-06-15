@@ -325,7 +325,6 @@ app.get('/api/blogger', async (req, res) => {
   }
 });
 
-
 app.post('/api/blogger', upload.single('image'), async (req, res) => {
   try {
     console.log('POST /api/blogger - Request body:', req.body);
@@ -336,7 +335,7 @@ app.post('/api/blogger', upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: 'Thiếu trường bắt buộc: title' });
     }
 
-    // Log nếu có ký tự tiếng Việt
+    // Log ký tự tiếng Việt
     const textFields = [title, source, location, description].join('');
     if (/[^\x00-\x7F]/.test(textFields)) {
       console.log('POST /api/blogger - Detected non-ASCII characters (e.g., tiếng Việt)');
