@@ -1,10 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import SocialShare from '../components/SocialShare.tsx';
 import API_URL from '../services/API.ts';
 import { fetchWithNgrokWarning } from '../services/fetchWithNgrok.ts';
-
 const isDarkMode = document.body.classList.contains('dark-mode');
+
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+}
 
 interface Photo {
   id: number;
@@ -13,7 +24,6 @@ interface Photo {
 }
 
 interface Album {
-  [x: string]: any;
   id: number;
   title: string;
   description: string;
@@ -23,45 +33,32 @@ interface Album {
 }
 
 const PhotoItem: React.FC = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const post = location.state?.post;
- const rawSlug = useParams().slug || '';
-const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
+  const rawSlug = useParams().slug || '';
+  const slug = rawSlug.split('?')[0];
 
-  const [photos, setPhotos] = useState<Photo[]>([]);
   const [album, setAlbum] = useState<Album | null>(null);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-    if (post?.id) {
-      fetchWithNgrokWarning(API_URL.photo)
-        .then(res => res.json())
-        .then((data: { albums: Album[] }) => {
-          const found = data.albums.find(a => a.id === post.id);
-          if (found) {
-            setAlbum(found);
-            setPhotos(found.photos || []);
-          }
-        })
-        .catch(console.error);
-    } else if (slug) {
-      fetchWithNgrokWarning(`${API_URL.photo}/${slug}`)
-        .then(res => {
-          if (!res.ok) throw new Error('Không tìm thấy album theo slug');
-          return res.json();
-        })
-        .then((data: Album) => {
-          setAlbum(data);
-          setPhotos(data.photos || []);
-        })
-        .catch(err => {
-          console.error(err);
+  useEffect(() => {
+    fetchWithNgrokWarning(API_URL.photo)
+      .then((res) => res.json())
+      .then((data: { albums: Album[] }) => {
+        const found = data.albums.find((a) => slugify(a.title) === slug);
+        if (found) {
+          setAlbum(found);
+          setPhotos(found.photos || []);
+        } else {
           setAlbum(null);
-        });
-    }
-  }, [post?.id, slug]);
-  
-  if (!post) return <div style={styles.error}>Không tìm thấy bài viết.</div>;
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setAlbum(null);
+      })
+      .finally(() => setLoading(false));
+  }, [slug]);
 
   const formatDate = (dateStr?: string, locationName?: string) => {
     if (!dateStr) return '';
@@ -76,33 +73,35 @@ const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
     return `${loc}, ngày ${day} tháng ${month} năm ${year}.`;
   };
 
-  const currentUrl = window.location.href;
+  if (loading) return <div style={styles.error}>Đang tải bài viết...</div>;
+
+  if (!album) return <div style={styles.error}>Không tìm thấy bài viết.</div>;
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>{album?.title || post.title}</h1>
-      <p style={styles.date}>{formatDate(album?.date || post.date, album?.location)}</p>
+      <h1 style={styles.title}>{album.title}</h1>
+      <p style={styles.date}>{formatDate(album.date, album.location)}</p>
 
       <SocialShare
         shareUrl={`https://blog-52bs.onrender.com/photos/${slug}`}
-        shareTitle={post.title}
+        shareTitle={album.title}
       />
 
       <hr style={{ ...styles.divider, width: '30%' }} />
 
       <p style={styles.description}>
-        <strong>Description:</strong> {album?.description || post.source}
+        <strong>Description:</strong> {album.description}
       </p>
 
       <hr style={styles.divider} />
 
       {photos.length > 0 && (
         <div style={styles.photoColumn}>
-          {photos.map(photo => (
+          {photos.map((photo) => (
             <img
               key={photo.id}
               src={photo.src}
-              alt={photo.alt}
+              alt={photo.alt || album.title}
               style={styles.photoLarge}
             />
           ))}
@@ -112,9 +111,7 @@ const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
       <hr style={styles.divider} />
 
       <footer>
-        <p style={styles.footerText}>
-          Ảnh chụp qua lăng kính của tớ
-        </p>
+        <p style={styles.footerText}>Ảnh chụp qua lăng kính của tớ</p>
         <p style={styles.footerCredit}>
           <strong>Hoàng Chiến</strong><br />
           © 2025 Hoàng Chiến. All rights reserved!
@@ -126,6 +123,7 @@ const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
     </div>
   );
 };
+
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {

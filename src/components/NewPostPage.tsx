@@ -64,19 +64,26 @@ const handleAddPost = async () => {
     formData.append('description', newPost.description || '');
     formData.append('image', newPost.image);
 
-    console.log('API.blogger:', API.blogger);
+    console.log('POST /api/blogger - FormData:', {
+      title: newPost.title,
+      source: newPost.source,
+      location: newPost.location,
+      description: newPost.description,
+      image: newPost.image.name,
+    });
+
     const res = await fetch(API.blogger, {
       method: 'POST',
       body: formData,
     });
-console.log('API.blogger:', API.blogger);
-    // ✅ Check status trước khi parse JSON
+
+    let responseText = await res.text(); // đọc body duy nhất 1 lần
     let data;
+
     try {
-      data = await res.json();
-    } catch (jsonErr) {
-      const errorText = await res.text(); // fallback nếu server trả về HTML
-      console.error('POST /api/blogger - Invalid JSON. Raw response:', errorText);
+      data = JSON.parse(responseText); // thử parse JSON
+    } catch (err) {
+      console.error('POST /api/blogger - Invalid JSON. Raw response:', responseText);
       throw new Error('Phản hồi từ server không hợp lệ (không phải JSON)');
     }
 
@@ -101,6 +108,7 @@ console.log('API.blogger:', API.blogger);
     alert(`Lỗi khi thêm bài viết: ${error.message}`);
   }
 };
+
   return (
     <>
       <div style={styles.container}>

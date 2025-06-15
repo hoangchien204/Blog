@@ -15,22 +15,26 @@ const BlogItem: React.FC = () => {
   const navigate = useNavigate();
  const rawSlug = useParams().slug || '';
 const slug = rawSlug.split('?')[0]; // loại bỏ mọi query như fbclid
-
   const [post, setPost] = useState<any>(null);
 
   useEffect(() => {
-    if (location.state?.post) {
-      setPost(location.state.post);
-    } else if (slug) {
-      fetch(`${API_URL.blogger}/${slug}`)
-        .then((res) => {
-          if (!res.ok) throw new Error('Không tìm thấy bài viết');
-          return res.json();
-        })
-        .then((data) => setPost(data))
-        .catch((err) => console.error('Lỗi lấy bài viết:', err));
-    }
-  }, [slug, location.state]);
+  const statePost = location.state?.post;
+
+  if (statePost) {
+    setPost(statePost);
+  } else if (slug) {
+    fetch(`${API_URL.blogger}/${slug}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Không tìm thấy bài viết');
+        return res.json();
+      })
+      .then((data) => setPost(data))
+      .catch((err) => {
+        console.error('Lỗi lấy bài viết:', err);
+        setPost(null); // để tránh lỗi undefined
+      });
+  }
+}, [slug, location.state]);
 useEffect(() => {
   console.log('Slug:', slug); // kiểm tra slug đúng chưa
 }, [slug]);

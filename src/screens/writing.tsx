@@ -138,7 +138,7 @@ const BlogScreen: React.FC = () => {
           >
             <div style={styles.postCard}>
               <img
-                src={`${URL_LINK.local}${post.image_path}`}
+                src={post.image_path}
                 alt={post.title}
                 style={styles.postImage}
               />
