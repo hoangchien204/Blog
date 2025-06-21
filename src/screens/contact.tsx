@@ -25,10 +25,10 @@ const Contact = () => {
     }
     // Xử lý gửi form tại đây (fetch hoặc axios nếu có API)
    fetch(API.mail, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(form),
-})
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(form),
+  })
   .then(res => {
     if (!res.ok) throw new Error('Lỗi gửi email');
     return res.json();

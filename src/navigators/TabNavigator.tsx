@@ -59,16 +59,16 @@ const adminIcons = [
 export default function TabNavigator() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('admin_token'));
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!sessionStorage.getItem('admin_token'));
   const [settingsClicked, setSettingsClicked] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
+    const saved = sessionStorage.getItem('darkMode');
     return saved ? saved === 'true' : false;
   });
   const [loadingIcon, setLoadingIcon] = useState(null);
 
   useEffect(() => {
     const checkToken = () => {
-      const token = localStorage.getItem('admin_token');
+      const token = sessionStorage.getItem('admin_token');
       setIsAdminLoggedIn(!!token);
     };
 

@@ -15,7 +15,7 @@ function RouteLogger() {
 }
 
 function ProtectedRoute({ children }) {
-  const token = localStorage.getItem('admin_token');
+  const token = sessionStorage.getItem('admin_token');
   console.log('ProtectedRoute - Token:', token);
   if (!token) {
     console.log('Redirecting to /login');

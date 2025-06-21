@@ -10,6 +10,7 @@ const LOCAL_STORAGE_KEY = 'photo_albums';
 interface PhotoAlbum {
   id: number;
   photos: string[];      // Danh sách ảnh trong album
+  title: string;
   description: string;
   location: string;
   date: string;
@@ -50,13 +51,14 @@ const [newTitle, setNewTitle] = useState('');
     const albums: PhotoAlbum[] = data.albums.map((album: any) => ({
       id: album.id,
       photos: album.photos ? album.photos.map((p: any) => p.src) : [],
+      title: album.title,
       description: album.description,
       location: album.location,
       date: new Date(album.date).toLocaleDateString('vi-VN'),
     }));
 
     setAlbums(albums);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(albums));
+    sessionStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(albums));
   } catch (err) {
     console.error('Lỗi khi lấy album:', err);
   }
@@ -161,10 +163,9 @@ const handleDeleteAlbum = async (albumId) => {
             {albums.map((album) => (
             <div className="photo-item-wrapper" key={album.id}>
                 <Link
-                  to={`/photos/${slugify(album.description)}`}
+                  to={`/photos/${slugify(album.title)}`}
                   state={{ post: album }} 
                   className="photo-item"
-                  title={album.description}
                   key={album.id}
                 >
                 <img

@@ -11,7 +11,7 @@ const setTokenWithExpiry = (key: string, value: string, ttl: number) => {
     value: value,
     expiry: now.getTime() + ttl,
   };
-  localStorage.setItem(key, JSON.stringify(item));
+  sessionStorage.setItem(key, JSON.stringify(item));
 };
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
