@@ -171,6 +171,7 @@ const styles = {
   borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
   margin: '20px 0',
   width: '120px', // hoặc '40%' nếu bạn muốn vừa phải
+  
 },
 
 };
