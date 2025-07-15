@@ -52,33 +52,6 @@ const slugify = (text) =>
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-const hashPassword = (pass) => crypto.createHash('sha256').update(pass).digest('hex');
-async function createAdminAccount() {
-  const username = 'admin';
-  const rawPassword = '03052004';
-  const hashedPassword = hashPassword(rawPassword);
-
-  try {
-    // Kiểm tra xem đã có admin chưa
-    const check = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    if (check.rowCount > 0) {
-      console.log('✅ Tài khoản admin đã tồn tại.');
-      return;
-    }
-
-    // Chèn tài khoản admin
-    await pool.query(
-      'INSERT INTO users (username, password, is_admin) VALUES ($1, $2, $3)',
-      [username, hashedPassword, true]
-    );
-    console.log('✅ Đã tạo tài khoản admin thành công!');
-  } catch (error) {
-    console.error('❌ Lỗi khi tạo admin:', error.message);
-  } finally {
-    await pool.end();
-  }
-}
-
 // LOGIN
 app.post('/api/login', async (req, res) => {
   try {
@@ -414,5 +387,4 @@ if (require('fs').existsSync(buildPath)) {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
-  createAdminAccount();
 });
