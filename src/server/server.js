@@ -16,9 +16,9 @@ app.use(express.json());
 const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
-  host: process.env.DB_SERVER,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
   database: process.env.DB_NAME,
-  port: 5432,
   ssl: { rejectUnauthorized: false }
 });
 cloudinary.config({
@@ -41,8 +41,6 @@ const upload = multer({
 });
 
 // PostgreSQL config
-
-
 const slugify = (text) =>
   text
     .toString()
@@ -55,7 +53,31 @@ const slugify = (text) =>
     .replace(/^-+|-+$/g, '');
 
 const hashPassword = (pass) => crypto.createHash('sha256').update(pass).digest('hex');
+async function createAdminAccount() {
+  const username = 'admin';
+  const rawPassword = '03052004';
+  const hashedPassword = hashPassword(rawPassword);
 
+  try {
+    // Kiểm tra xem đã có admin chưa
+    const check = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (check.rowCount > 0) {
+      console.log('✅ Tài khoản admin đã tồn tại.');
+      return;
+    }
+
+    // Chèn tài khoản admin
+    await pool.query(
+      'INSERT INTO users (username, password, is_admin) VALUES ($1, $2, $3)',
+      [username, hashedPassword, true]
+    );
+    console.log('✅ Đã tạo tài khoản admin thành công!');
+  } catch (error) {
+    console.error('❌ Lỗi khi tạo admin:', error.message);
+  } finally {
+    await pool.end();
+  }
+}
 
 // LOGIN
 app.post('/api/login', async (req, res) => {
@@ -101,14 +123,15 @@ app.post('/api/contact', async (req, res) => {
 app.get('/api/about', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM about ORDER BY id DESC LIMIT 1');
+    console.log('>>> Kết quả truy vấn bảng about:', result.rows);
+
     if (result.rows.length === 0) {
-      await insertDefaultAbout();
-      const newResult = await pool.query('SELECT * FROM about ORDER BY id DESC LIMIT 1');
-      return res.json(newResult.rows[0]);
+      return res.status(404).json({ message: 'Không có dữ liệu about nào' });
     }
+
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Get about error:', error.message);
+    console.error('Get about error:', error);  // in cả error, không chỉ .message
     res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu about', error: error.message });
   }
 });
@@ -391,4 +414,5 @@ if (require('fs').existsSync(buildPath)) {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
+  createAdminAccount();
 });
